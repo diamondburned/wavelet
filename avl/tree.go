@@ -25,9 +25,11 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/perlin-network/wavelet/store"
 	"github.com/phf/go-queue/queue"
 	"github.com/pkg/errors"
+	"github.com/valyala/bytebufferpool"
 )
 
 var NodeKeyPrefix = []byte("@1:")
@@ -166,8 +168,9 @@ func (t *Tree) Commit() error {
 			return false, nil
 		}
 		t.pending.Delete(n.id)
-		var buf bytes.Buffer
-		n.serialize(&buf)
+		buf := bytebufferpool.Get()
+		defer bytebufferpool.Put(buf)
+		n.serialize(buf)
 
 		batch.Put(append(NodeKeyPrefix, n.id[:]...), buf.Bytes())
 		return true, nil
@@ -315,7 +318,8 @@ func (t *Tree) DumpDiff(prevViewID uint64) []byte {
 	var stack queue.Queue
 	stack.PushBack(t.root)
 
-	buf := bytes.NewBuffer(nil)
+	buf := bytebufferpool.Get()
+	defer bytebufferpool.Put(buf)
 
 	for stack.Len() > 0 {
 		current := stack.PopBack().(*node)
