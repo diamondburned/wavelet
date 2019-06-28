@@ -23,7 +23,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/rs/zerolog"
 	"io"
 	"os"
 	"sort"
@@ -31,6 +30,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -43,6 +44,8 @@ const (
 	colorGreen
 	colorYellow
 )
+
+const logFieldDelimiter = '\n'
 
 var (
 	consoleBufPool = sync.Pool{
@@ -188,7 +191,7 @@ func (w ConsoleWriter) writeFields(evt map[string]interface{}, buf *bytes.Buffer
 	sort.Strings(fields)
 
 	if len(fields) > 0 {
-		buf.WriteByte(' ')
+		buf.WriteByte(logFieldDelimiter)
 	}
 
 	// Move the "error" field to the front
@@ -257,7 +260,7 @@ func (w ConsoleWriter) writeFields(evt map[string]interface{}, buf *bytes.Buffer
 		}
 
 		if i < len(fields)-1 { // Skip space for last field
-			buf.WriteByte(' ')
+			buf.WriteByte(logFieldDelimiter)
 		}
 	}
 }

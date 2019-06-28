@@ -23,6 +23,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"os"
+	"sort"
+	"strconv"
+	"time"
+
 	"github.com/perlin-network/noise"
 	"github.com/perlin-network/noise/cipher"
 	"github.com/perlin-network/noise/edwards25519"
@@ -38,13 +46,6 @@ import (
 	"google.golang.org/grpc"
 	"gopkg.in/urfave/cli.v1"
 	"gopkg.in/urfave/cli.v1/altsrc"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"os"
-	"sort"
-	"strconv"
-	"time"
 )
 
 import _ "net/http/pprof"
@@ -230,13 +231,17 @@ func start(cfg *Config) {
 		panic(err)
 	}
 
-	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(listener.Addr().(*net.TCPAddr).Port))
+	addr := net.JoinHostPort(
+		cfg.Host,
+		strconv.Itoa(listener.Addr().(*net.TCPAddr).Port),
+	)
 
 	if cfg.NAT {
 		if len(cfg.Peers) > 1 {
 			resolver := nat.NewPMP()
 
-			if err := resolver.AddMapping("tcp",
+			if err := resolver.AddMapping(
+				"tcp",
 				uint16(listener.Addr().(*net.TCPAddr).Port),
 				uint16(listener.Addr().(*net.TCPAddr).Port),
 				30*time.Minute,
@@ -259,7 +264,10 @@ func start(cfg *Config) {
 			panic(err)
 		}
 
-		addr = net.JoinHostPort(string(ip), strconv.Itoa(listener.Addr().(*net.TCPAddr).Port))
+		addr = net.JoinHostPort(
+			string(ip),
+			strconv.Itoa(listener.Addr().(*net.TCPAddr).Port),
+		)
 	}
 
 	logger.Info().Str("addr", addr).Msg("Listening for peers.")
@@ -273,10 +281,14 @@ func start(cfg *Config) {
 		addr, keys,
 		skademlia.WithC1(sys.SKademliaC1),
 		skademlia.WithC2(sys.SKademliaC2),
-		skademlia.WithDialOptions(grpc.WithDefaultCallOptions(grpc.UseCompressor(snappy.Name))),
+		skademlia.WithDialOptions(
+			grpc.WithDefaultCallOptions(grpc.UseCompressor(snappy.Name)),
+		),
 	)
 
-	client.SetCredentials(noise.NewCredentials(addr, handshake.NewECDH(), cipher.NewAEAD(), client.Protocol()))
+	client.SetCredentials(noise.NewCredentials(
+		addr, handshake.NewECDH(), cipher.NewAEAD(), client.Protocol(),
+	))
 
 	client.OnPeerJoin(func(conn *grpc.ClientConn, id *skademlia.ID) {
 		publicKey := id.PublicKey()
@@ -304,7 +316,8 @@ func start(cfg *Config) {
 	if len(cfg.Database) > 0 {
 		kv, err = store.NewLevelDB(cfg.Database)
 		if err != nil {
-			logger.Fatal().Err(err).Msgf("Failed to create/open database located at %q.", cfg.Database)
+			logger.Fatal().Err(err).
+				Msgf("Failed to create/open database located at %q.", cfg.Database)
 		}
 	}
 

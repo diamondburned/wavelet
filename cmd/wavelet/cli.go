@@ -24,6 +24,10 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"strconv"
+
 	"github.com/chzyer/readline"
 	"github.com/perlin-network/noise/skademlia"
 	"github.com/perlin-network/wavelet"
@@ -31,10 +35,12 @@ import (
 	"github.com/perlin-network/wavelet/sys"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"io"
-	"io/ioutil"
-	"strconv"
-	"strings"
+)
+
+const (
+	vtRed   = "\033[31m"
+	vtReset = "\033[39m"
+	prompt  = "»»»"
 )
 
 type CLI struct {
@@ -44,121 +50,133 @@ type CLI struct {
 	logger zerolog.Logger
 	keys   *skademlia.Keypair
 	tree   string
+
+	// handlers corresponding to $0 and a callback for $@
+	handlers map[string]func([]string)
 }
 
 func NewCLI(client *skademlia.Client, ledger *wavelet.Ledger, keys *skademlia.Keypair) (*CLI, error) {
-	completer := readline.NewPrefixCompleter(
-		readline.PcItem("l"), readline.PcItem("status"),
-		readline.PcItem("p"), readline.PcItem("pay"),
-		readline.PcItem("c"), readline.PcItem("call"),
-		readline.PcItem("f"), readline.PcItem("find"),
-		readline.PcItem("s"), readline.PcItem("spawn"),
-		readline.PcItem("ps"), readline.PcItem("place-stake"),
-		readline.PcItem("ws"), readline.PcItem("withdraw-stake"),
-		readline.PcItem("wr"), readline.PcItem("withdraw-reward"),
-		readline.PcItem("help"),
+	cli := &CLI{
+		client: client,
+		ledger: ledger,
+		logger: log.Node(),
+		keys:   keys,
+	}
+
+	cli.handlers = map[string]func([]string){
+		"l":      cli.status,
+		"status": cli.status,
+
+		"p":   cli.pay,
+		"pay": cli.pay,
+
+		"c":    cli.call,
+		"call": cli.call,
+
+		"f":    cli.find,
+		"find": cli.find,
+
+		"s":     cli.spawn,
+		"spawn": cli.spawn,
+
+		"ps":          cli.placeStake,
+		"place-stake": cli.placeStake,
+
+		"ws":             cli.withdrawStake,
+		"withdraw-stake": cli.withdrawStake,
+
+		"wr":              cli.withdrawReward,
+		"withdraw-reward": cli.withdrawReward,
+
+		"help": cli.usage,
+		"exit": cli.exit,
+	}
+
+	var completers = make(
+		[]readline.PrefixCompleterInterface, 0, len(cli.handlers),
 	)
 
-	rl, err := readline.NewEx(
-		&readline.Config{
-			Prompt:            "\033[31m»»»\033[0m ",
-			AutoComplete:      completer,
-			HistoryFile:       "/tmp/readline.tmp",
-			InterruptPrompt:   "^C",
-			EOFPrompt:         "exit",
-			HistorySearchFold: true,
-		},
-	)
+	for cmd := range cli.handlers {
+		completers = append(completers, readline.PcItem(cmd))
+	}
+
+	var completer = readline.NewPrefixCompleter(completers...)
+
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:            vtRed + prompt + vtReset + " ",
+		AutoComplete:      completer,
+		HistoryFile:       "/tmp/wavelet-history.tmp",
+		InterruptPrompt:   "^C",
+		EOFPrompt:         "exit",
+		HistorySearchFold: true,
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
-	log.SetWriter(log.LoggerWavelet, log.NewConsoleWriter(rl.Stderr(), log.FilterFor(log.ModuleNode, log.ModuleNetwork, log.ModuleSync, log.ModuleConsensus, log.ModuleContract)))
+	cli.rl = rl
+	cli.tree = completer.Tree("  ")
 
-	return &CLI{
-		rl:     rl,
-		client: client,
-		ledger: ledger,
-		logger: log.Node(),
-		tree:   completer.Tree("    "),
-		keys:   keys,
-	}, nil
-}
+	log.SetWriter(
+		log.LoggerWavelet,
+		log.NewConsoleWriter(rl.Stderr(), log.FilterFor(
+			log.ModuleNode,
+			log.ModuleNetwork,
+			log.ModuleSync,
+			log.ModuleConsensus,
+			log.ModuleContract,
+		)),
+	)
 
-func toCMD(in string, n int) []string {
-	in = strings.TrimSpace(in[n:])
-	if in == "" {
-		return []string{}
-	}
-
-	return strings.Split(in, " ")
+	return cli, nil
 }
 
 func (cli *CLI) Start() {
-	defer func() {
-		_ = cli.rl.Close()
-	}()
-
+ReadLoop:
 	for {
 		line, err := cli.rl.Readline()
 		switch err {
 		case readline.ErrInterrupt:
 			if len(line) == 0 {
-				return
-			} else {
-				continue
+				break ReadLoop
 			}
+
+			continue ReadLoop
+
 		case io.EOF:
-			return
+			break ReadLoop
 		}
 
-		switch {
-		case line == "l" || line == "status":
-			cli.status()
-		case strings.HasPrefix(line, "p "):
-			cli.pay(toCMD(line, 2))
-		case strings.HasPrefix(line, "pay "):
-			cli.pay(toCMD(line, 4))
-		case strings.HasPrefix(line, "c "):
-			cli.call(toCMD(line, 2))
-		case strings.HasPrefix(line, "call "):
-			cli.call(toCMD(line, 5))
-		case strings.HasPrefix(line, "f "):
-			cli.find(toCMD(line, 2))
-		case strings.HasPrefix(line, "find "):
-			cli.find(toCMD(line, 5))
-		case strings.HasPrefix(line, "s "):
-			cli.spawn(toCMD(line, 2))
-		case strings.HasPrefix(line, "spawn "):
-			cli.spawn(toCMD(line, 5))
-		case strings.HasPrefix(line, "ps "):
-			cli.placeStake(toCMD(line, 3))
-		case strings.HasPrefix(line, "place-stake "):
-			cli.placeStake(toCMD(line, 12))
-		case strings.HasPrefix(line, "ws "):
-			cli.withdrawStake(toCMD(line, 3))
-		case strings.HasPrefix(line, "withdraw-stake "):
-			cli.withdrawStake(toCMD(line, 15))
-		case strings.HasPrefix(line, "wr "):
-			cli.withdrawReward(toCMD(line, 3))
-		case strings.HasPrefix(line, "withdraw-reward "):
-			cli.withdrawReward(toCMD(line, 16))
-		case line == "":
-			fallthrough
-		case line == "help":
-			cli.usage()
-		default:
-			fmt.Printf("unrecognised command :'%s'\n", line)
+		var a = ParseArgs(line)
+		if a.Name() == "" {
+			cli.usage(nil)
+			continue
 		}
+
+		for cmd, handler := range cli.handlers {
+			if cmd == a.Name() {
+				handler(a.Args())
+				continue ReadLoop
+			}
+		}
+
+		fmt.Printf("unrecognised command: '%s'\n", line)
 	}
+
+	cli.rl.Close()
 }
 
-func (cli *CLI) usage() {
+func (cli *CLI) exit([]string) {
+	cli.rl.Close()
+}
+
+func (cli *CLI) usage([]string) {
 	_, _ = io.WriteString(cli.rl.Stderr(), "commands:\n")
 	_, _ = io.WriteString(cli.rl.Stderr(), cli.tree)
 }
 
-func (cli *CLI) status() {
+func (cli *CLI) status([]string) {
 	preferredID := "N/A"
 
 	if preferred := cli.ledger.Finalizer().Preferred(); preferred != nil {
