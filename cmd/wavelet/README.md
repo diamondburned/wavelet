@@ -20,10 +20,10 @@ p [address] [amount]
 w [account id]
 
 # Gives details about a transaction under id [tx id].
-tx [tx id]
+f [tx id]
 
 # Test-deploy a smart contract at a given path.
-c [smart contract path here]
+s [smart contract path here]
 
 # Register yourself as a validator with a placed stake of [stake amount].
 ps [stake amount]

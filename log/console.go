@@ -45,8 +45,6 @@ const (
 	colorYellow
 )
 
-const logFieldDelimiter = '\n'
-
 var (
 	consoleBufPool = sync.Pool{
 		New: func() interface{} {
@@ -172,8 +170,8 @@ func (w ConsoleWriter) Write(p []byte) (n int, err error) {
 
 	w.writeFields(event, buf)
 
-	_ = buf.WriteByte('\n')
-	_, _ = buf.WriteTo(w.Out)
+	buf.Write([]byte{'\n', '\n'})
+	buf.WriteTo(w.Out)
 
 	return len(p), nil
 }
@@ -191,7 +189,7 @@ func (w ConsoleWriter) writeFields(evt map[string]interface{}, buf *bytes.Buffer
 	sort.Strings(fields)
 
 	if len(fields) > 0 {
-		buf.WriteByte(logFieldDelimiter)
+		buf.WriteByte('\n')
 	}
 
 	// Move the "error" field to the front
@@ -239,6 +237,10 @@ func (w ConsoleWriter) writeFields(evt map[string]interface{}, buf *bytes.Buffer
 			}
 		}
 
+		// Insert 4 spaces for indentation
+		buf.WriteString("    ")
+
+		// Insert the field key
 		buf.WriteString(fn(field))
 
 		switch fValue := evt[field].(type) {
@@ -259,8 +261,8 @@ func (w ConsoleWriter) writeFields(evt map[string]interface{}, buf *bytes.Buffer
 			}
 		}
 
-		if i < len(fields)-1 { // Skip space for last field
-			buf.WriteByte(logFieldDelimiter)
+		if i < len(fields)-1 { // Skip newline for last field
+			buf.WriteByte('\n')
 		}
 	}
 }
