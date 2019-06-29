@@ -147,24 +147,26 @@ func NewCLI(client *skademlia.Client, ledger *wavelet.Ledger, keys *skademlia.Ke
 		0, len(c.app.Commands)*2+1,
 	)
 
+	completer := readline.PcItemDynamic(func(string) []string {
+		return c.completion
+	})
+
 	for _, cmd := range c.app.Commands {
 		completers = append(completers, readline.PcItem(
-			cmd.Name, c.getCompleter(),
+			cmd.Name, completer,
 		))
 
 		for _, alias := range cmd.Aliases {
 			completers = append(completers, readline.PcItem(
-				alias, c.getCompleter(),
+				alias, completer,
 			))
 		}
 	}
 
-	var completer = readline.NewPrefixCompleter(completers...)
-
 	// Make a new readline struct
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:            vtRed + prompt + vtReset + " ",
-		AutoComplete:      completer,
+		AutoComplete:      readline.NewPrefixCompleter(completers...),
 		HistoryFile:       "/tmp/wavelet-history.tmp",
 		InterruptPrompt:   "^C",
 		EOFPrompt:         "exit",
@@ -229,6 +231,19 @@ ReadLoop:
 
 func (cli *CLI) exit(ctx *cli.Context) {
 	cli.rl.Close()
+}
+
+func (cli *CLI) addCompletion(ids ...string) {
+MainLoop:
+	for _, id := range ids {
+		for _, c := range cli.completion {
+			if c == id {
+				continue MainLoop
+			}
+		}
+
+		cli.completion = append(cli.completion, id)
+	}
 }
 
 func a(f func(*cli.Context)) func(*cli.Context) error {
