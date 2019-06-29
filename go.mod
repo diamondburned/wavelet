@@ -6,7 +6,10 @@ replace github.com/go-interpreter/wagon => github.com/perlin-network/wagon v0.3.
 
 require (
 	github.com/buaazp/fasthttprouter v0.1.1
+	github.com/c-bata/go-prompt v0.2.3
+	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
+	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/fasthttp/websocket v1.4.0
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/snappy v0.0.1
@@ -14,10 +17,12 @@ require (
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/huandu/skiplist v0.0.0-20180112095830-8e883b265e1b
+	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/perlin-network/life v0.0.0-20190521143330-57f3819c2df0
 	github.com/perlin-network/noise v0.0.0-20190527211417-79abfb78fdba
 	github.com/phf/go-queue v0.0.0-20170504031614-9abe38d0371d
 	github.com/pkg/errors v0.8.1
+	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
 	github.com/rs/zerolog v1.14.3
 	github.com/stretchr/testify v1.3.0
