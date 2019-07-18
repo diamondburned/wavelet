@@ -13,7 +13,7 @@ require (
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/diamondburned/tcell v1.1.7
-	github.com/diamondburned/tview/v2 v2.2.0
+	github.com/diamondburned/tview/v2 v2.2.2
 	github.com/fasthttp/websocket v1.4.0
 	github.com/gdamore/tcell v1.1.4
 	github.com/gogo/protobuf v1.2.1
