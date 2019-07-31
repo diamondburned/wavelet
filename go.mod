@@ -9,8 +9,6 @@ require (
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
-	github.com/dghubble/trie v0.0.0-20190512033633-6d8e3fa705df
-	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dghubble/trie v0.0.0-20190512033633-6d8e3fa705df
 	github.com/diamondburned/tcell v1.1.8
@@ -21,10 +19,9 @@ require (
 	github.com/golang/snappy v0.0.1
 	github.com/google/btree v1.0.0
 	github.com/huandu/skiplist v0.0.0-20180112095830-8e883b265e1b
-	github.com/perlin-network/life v0.0.0-20190723115110-3091ed0c1be8
-	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
-	github.com/perlin-network/life v0.0.0-20190521143330-57f3819c2df0
+	github.com/mattn/go-colorable v0.1.2 // indirect
+	github.com/perlin-network/life v0.0.0-20190723115110-3091ed0c1be8
 	github.com/perlin-network/noise v0.0.0-20190527211417-79abfb78fdba
 	github.com/phf/go-queue v0.0.0-20170504031614-9abe38d0371d
 	github.com/pkg/errors v0.8.1
