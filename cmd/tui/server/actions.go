@@ -69,31 +69,45 @@ func (s *Server) Status() {
 		F("preferred_votes", "%d", count))
 }
 
+var ErrInsufficientBalance = errors.New("Insufficient balance")
+
 // gasLimit is optional
 func (s *Server) Pay(recipient [wavelet.SizeAccountID]byte,
-	amount, gasLimit int, additional []byte) (*wavelet.Transaction, error) {
+	amount, gasLimit uint64, additional []byte) (*wavelet.Transaction, error) {
 
-	// Create a new payload and write the recipient
-	payload := bytes.NewBuffer(nil)
-	payload.Write(recipient[:])
+	var payload wavelet.Transfer
+	copy(payload.Recipient[:], recipient[:])
 
-	// Make an int64 bytes buffer
-	var intBuf = make([]byte, 8)
+	payload.Amount = amount
 
-	// Write the amount
-	binary.LittleEndian.PutUint64(intBuf, uint64(amount))
-	payload.Write(intBuf)
+	snapshot := s.Ledger.Snapshot()
+	balance, _ := wavelet.ReadAccountBalance(snapshot, s.Keys.PublicKey())
 
-	// Write the gas limit
-	binary.LittleEndian.PutUint64(intBuf, uint64(gasLimit))
-	payload.Write(intBuf)
+	if balance < uint64(amount)+sys.TransactionFeeAmount {
+		err := logger.WithError(ErrInsufficientBalance).
+			Wrap("Can't pay")
 
-	if additional != nil {
-		payload.Write(additional)
+		err.F("balance", "%d", balance)
+		err.F("cost", "%d", amount)
+		err.F("offset", "%d", int(balance)-int(amount))
+
+		s.logger.Level(err)
+
+		return nil, err
+	}
+
+	_, codeAvailable := wavelet.ReadAccountContractCode(
+		snapshot, payload.Recipient,
+	)
+
+	if codeAvailable {
+		// Set gas limit by default to the balance the user has.
+		payload.GasLimit = balance - amount - sys.TransactionFeeAmount
+		payload.FuncName = []byte("on_money_received")
 	}
 
 	tx, err := s.sendTx(wavelet.NewTransaction(
-		s.Keys, sys.TagTransfer, payload.Bytes(),
+		s.Keys, sys.TagTransfer, payload.Marshal(),
 	))
 
 	if err != nil {
